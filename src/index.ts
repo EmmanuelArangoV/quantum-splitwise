@@ -1,91 +1,84 @@
-//file dedicated to testing and for do the functionalities of CRUD
+import { ExpenseManagerService} from "./backend/services";
 
-import { supabase } from './configuration/supabaseClient'
-import { createUserDB, getUsersDB,deleteUserDB } from './data/user.db'
-import { createExpenseDB,getExpensesDB,deleteExpenseDB } from './data/expense.db'
-import { Models } from './types'
-
-async function testConnection() {
-  const {error } = await supabase.auth.getSession()
-  
-  if (error) {
-    console.error('Error to connect with Supabase:', error.message)
-  } else {
-    console.log('Connection to Supabase was successfully!')
+function check(label: string, condition: boolean): void {
+  if (!condition) {
+    throw new Error(`FAIL: ${label}`)
   }
+  console.log(`OK: ${label}`)
 }
 
-testConnection()
-
-// testing for try to create an user, (debugging)
-
-
-/*
-async function test() {
-    try {
-        console.log('--- creando usuario ---')
-        await createUserDB('Juan', 'juan@test.com')
-
-        console.log('--- obteniendo usuarios ---')
-        const users = await getUsersDB()
-
-        console.log('RESULT:', users)
-
-    } catch (err) {
-        console.error('ERROR GENERAL:', err)
-    }
+function findDebt(event: { debts: Array<{ userId: string; amount: number }> }, userId: string): number {
+  const debt = event.debts.find(d => d.userId === userId)
+  return debt ? debt.amount : 0
 }
 
-test() */
+async function run(): Promise<void> {
+  const service = new ExpenseManagerService()
+  const suffix = Date.now()
 
-/*
-async function test() {
-    try {
-        console.log('--- obteniendo usuarios ---')
+  // 1) Usuarios
+  const admin = await service.createUser(`Admin ${suffix}`, `admin.${suffix}@test.com`)
+  const ana = await service.createUser(`Ana ${suffix}`, `ana.${suffix}@test.com`)
+  const luis = await service.createUser(`Luis ${suffix}`, `luis.${suffix}@test.com`)
+  check('Crear usuarios', !!admin.id && !!ana.id && !!luis.id)
 
-        const users = await getUsersDB()
+  // 2) Evento (admin 100%)
+  let event = await service.createEvent('Cena test', 120, admin.id)
+  check('Evento creado', event.amount === 120 && event.adminId === admin.id)
+  check('Admin inicia con 100%', event.debts.length === 1 && findDebt(event, admin.id) === 120)
 
-        console.log('RESULT:', users)
+  // 3) Agregar participantes y repartir
+  event = await service.addParticipantToEvent(event.id, ana.id, 50) // admin se queda con 70, Ana con 50
+  check('Reparto con monto fijo Ana=50', findDebt(event, admin.id) === 70 && findDebt(event, ana.id) === 50)
 
-    } catch (err) {
-        console.error('ERROR GENERAL:', err)
-    }
+  event = await service.addParticipantToEvent(event.id, luis.id, 30) // admin reduce otros 30 (y le queda 40)
+  check(
+      'Reparto con monto fijo Luis=30',
+      findDebt(event, admin.id) === 40 &&
+      findDebt(event, ana.id) === 50 &&
+      findDebt(event, luis.id) === 30
+  )
+
+  // 4) Update amount (esta prueba volverá a dividir equitativo todo, la mantenemos, pero cambiaremos a probar borrar al usuario para la validación de deuda y todo está ok)
+  event = await service.updateEventAmount(event.id, 150) // 150 / 3 = 50
+  check(
+      'Update amount reparte equitativo',
+      findDebt(event, admin.id) === 50 &&
+      findDebt(event, ana.id) === 50 &&
+      findDebt(event, luis.id) === 50
+  )
+
+  // 5) Balances
+  const balancesBeforeDelete = await service.getUsersWithBalance()
+  console.log('\nBalances antes de eliminar usuario:')
+  console.table(
+      balancesBeforeDelete.map(u => ({
+        name: u.name,
+        email: u.email,
+        balance: u.balance
+      }))
+  )
+
+  // 6) Eliminar usuario participante (su deuda pasa al admin)
+  await service.deleteUser(ana.id)
+  event = (await service.getEvents()).find(e => e.id === event.id)!
+  check('Ana eliminada del evento', event.debts.every(d => d.userId !== ana.id))
+  check('Deuda de Ana transferida al admin', findDebt(event, admin.id) === 100 && findDebt(event, luis.id) === 50)
+
+  const balancesAfterDelete = await service.getUsersWithBalance()
+  console.log('\nBalances después de eliminar usuario:')
+  console.table(
+      balancesAfterDelete.map(u => ({
+        name: u.name,
+        email: u.email,
+        balance: u.balance
+      }))
+  )
+
+  console.log('\nVALIDACION COMPLETA OK')
 }
 
-test() */
-
-/* async function testexpense() {
-  try {
-    // 1. crear usuarios reales
-    const u1 = await createUserDB('Juan', 'juan1@test.com')
-    const u2 = await createUserDB('Ana', 'ana@test.com')
-    const u3 = await createUserDB('Luis', 'luis@test.com')
-
-    const user1 = u1?.[0]?.id
-    const user2 = u2?.[0]?.id
-    const user3 = u3?.[0]?.id
-
-    console.log('Users:', user1, user2, user3)
-
-    // 2. crear gasto (usando clase de tu compañero)
-    const expense = new Models.Expense('Pizza', 60, user1)
-
-    // 3. crear participantes
-    const participants = [
-        new Models.ExpenseParticipant(expense.id, user1, 20),
-        new Models.ExpenseParticipant(expense.id, user2, 20),
-        new Models.ExpenseParticipant(expense.id, user3, 20),
-    ]
-
-    // 4. guardar en DB
-    await createExpenseDB(expense, participants)
-
-    console.log('✅ Expense creado correctamente')
-
-    } catch (err) {
-        console.error('❌ ERROR GENERAL:', err)
-    }
-}
-
-testexpense() */
-
+run().catch(error => {
+  console.error('\nVALIDACION FALLIDA')
+  console.error(error)
+})

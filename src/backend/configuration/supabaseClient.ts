@@ -10,5 +10,5 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Without credentials of Supabase in the file .env')
 }
 
-
 export const supabase = createClient(supabaseUrl, supabaseKey)
+
