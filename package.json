@@ -20,6 +20,11 @@
   },
   "homepage": "https://github.com/EmmanuelArangoV/quantum-splitwise#readme",
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.101.0",
+    "dotenv": "^17.3.1"
   }
 }
