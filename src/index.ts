@@ -1,91 +1,114 @@
-//file dedicated to testing and for do the functionalities of CRUD
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { ExpenseManagerService } from "./backend/services";
 
-import { supabase } from './configuration/supabaseClient'
-import { createUserDB, getUsersDB,deleteUserDB } from './data/user.db'
-import { createExpenseDB,getExpensesDB,deleteExpenseDB } from './data/expense.db'
-import { Models } from './types'
+const app = express();
+const port = process.env.PORT || 3000;
+const service = new ExpenseManagerService();
 
-async function testConnection() {
-  const {error } = await supabase.auth.getSession()
-  
-  if (error) {
-    console.error('Error to connect with Supabase:', error.message)
-  } else {
-    console.log('Connection to Supabase was successfully!')
-  }
-}
+app.use(cors());
+app.use(express.json());
 
-testConnection()
+// Servir frontend estático directamente
+app.use(express.static(path.join(__dirname, '../src/frontend')));
 
-// testing for try to create an user, (debugging)
+// ENDPOINTS API
 
-
-/*
-async function test() {
+// 1. Obtener todos los usuarios (y balances)
+app.get('/api/users', async (req, res) => {
     try {
-        console.log('--- creando usuario ---')
-        await createUserDB('Juan', 'juan@test.com')
-
-        console.log('--- obteniendo usuarios ---')
-        const users = await getUsersDB()
-
-        console.log('RESULT:', users)
-
-    } catch (err) {
-        console.error('ERROR GENERAL:', err)
+        const users = await service.getUsersWithBalance();
+        res.json(users);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
     }
-}
+});
 
-test() */
-
-/*
-async function test() {
+// 2. Crear usuario
+app.post('/api/users', async (req, res) => {
     try {
-        console.log('--- obteniendo usuarios ---')
-
-        const users = await getUsersDB()
-
-        console.log('RESULT:', users)
-
-    } catch (err) {
-        console.error('ERROR GENERAL:', err)
+        const { name, email } = req.body;
+        const user = await service.createUser(name, email);
+        res.status(201).json(user);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
     }
-}
+});
 
-test() */
-
-/* async function testexpense() {
-  try {
-    // 1. crear usuarios reales
-    const u1 = await createUserDB('Juan', 'juan1@test.com')
-    const u2 = await createUserDB('Ana', 'ana@test.com')
-    const u3 = await createUserDB('Luis', 'luis@test.com')
-
-    const user1 = u1?.[0]?.id
-    const user2 = u2?.[0]?.id
-    const user3 = u3?.[0]?.id
-
-    console.log('Users:', user1, user2, user3)
-
-    // 2. crear gasto (usando clase de tu compañero)
-    const expense = new Models.Expense('Pizza', 60, user1)
-
-    // 3. crear participantes
-    const participants = [
-        new Models.ExpenseParticipant(expense.id, user1, 20),
-        new Models.ExpenseParticipant(expense.id, user2, 20),
-        new Models.ExpenseParticipant(expense.id, user3, 20),
-    ]
-
-    // 4. guardar en DB
-    await createExpenseDB(expense, participants)
-
-    console.log('✅ Expense creado correctamente')
-
-    } catch (err) {
-        console.error('❌ ERROR GENERAL:', err)
+// 3. Obtener eventos
+app.get('/api/events', async (req, res) => {
+    try {
+        const events = await service.getEvents();
+        res.json(events);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
     }
-}
+});
 
-testexpense() */
+// 4. Crear evento
+app.post('/api/events', async (req, res) => {
+    try {
+        const { title, amount, adminId } = req.body;
+        const event = await service.createEvent(title, amount, adminId);
+        res.status(201).json(event);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
 
+// 5. Agregar participante a evento
+app.post('/api/events/:id/participants', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, assignedAmount } = req.body;
+        
+        const event = await service.addParticipantToEvent(
+            id, 
+            userId, 
+            assignedAmount ? Number(assignedAmount) : undefined
+        );
+        res.json(event);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// 6. Eliminar usuario
+app.delete('/api/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await service.deleteUser(id);
+        res.status(200).json({ message: 'Usuario eliminado' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 7. Actualizar monto del evento
+app.put('/api/events/:id/amount', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newAmount } = req.body;
+        const event = await service.updateEventAmount(id, Number(newAmount));
+        res.json(event);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// 8. Eliminar evento
+app.delete('/api/events/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await service.deleteEvent(id);
+        res.status(200).json({ message: 'Evento eliminado' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Servidor y API corriendo en http://localhost:${port}`);
+    console.log(`Frontend disponible en http://localhost:${port}/`);
+});
