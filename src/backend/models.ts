@@ -53,7 +53,7 @@ export namespace BackendModels {
     public readonly createdAt: Date
     public debts: IEventDebt[]
 
-    constructor(title: string, amount: number, adminId: string) {
+    constructor(title: string, amount: number, adminId: string, id?: string, createdAt?: Date, debts?: IEventDebt[]) {
       if (!title.trim()) {
         throw new Error('El titulo del evento es obligatorio')
       }
@@ -64,25 +64,43 @@ export namespace BackendModels {
         throw new Error('El admin del evento es obligatorio')
       }
 
-      this.id = crypto.randomUUID()
+      this.id = id || crypto.randomUUID()
       this.title = title
       this.adminId = adminId
       this.amount = amount
-      this.createdAt = new Date()
-      this.debts = [{ userId: adminId, amount }]
+      this.createdAt = createdAt || new Date()
+      this.debts = debts || [{ userId: adminId, amount }]
     }
 
-    public addParticipant(userId: string): void {
+    public addParticipant(userId: string, assignedAmount?: number): void {
       if (!userId) {
         throw new Error('El participante es obligatorio')
       }
-      const alreadyInEvent = this.debts.some(debt => debt.userId === userId)
-      if (alreadyInEvent) {
+      if (this.hasParticipant(userId)) {
         return
       }
 
-      this.debts.push({ userId, amount: 0 })
-      this.recalculateDebts()
+      if (assignedAmount !== undefined) {
+        if (assignedAmount <= 0) {
+          throw new Error('El monto asignado debe ser mayor a 0')
+        }
+
+        const adminDebt = this.debts.find(d => d.userId === this.adminId)
+        const currentAdminAmount = adminDebt ? adminDebt.amount : 0
+
+        if (assignedAmount > currentAdminAmount) {
+          throw new Error('El monto asignado supera la deuda actual del administrador para este evento')
+        }
+
+        if (adminDebt) {
+          adminDebt.amount -= assignedAmount
+        }
+
+        this.debts.push({ userId, amount: assignedAmount })
+      } else {
+        this.debts.push({ userId, amount: 0 })
+        this.recalculateDebts()
+      }
     }
 
     public updateAmount(newAmount: number): void {
