@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Splitwise</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>Quantum Splitwise</h1>
+            <p>Divide y gestiona gastos fácilmente</p>
+        </header>
+
+        <main class="dashboard">
+            <!-- Sección de Usuarios -->
+            <section class="card" id="users-section">
+                <div class="card-header">
+                    <h2>Usuarios</h2>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="user-name" placeholder="Nombre completo">
+                    <input type="email" id="user-email" placeholder="Correo electrónico">
+                    <button id="btn-create-user" class="btn primary">Crear Usuario</button>
+                </div>
+                <ul class="list" id="users-list">
+                    <!-- Lista de usuarios poblada por JS -->
+                    <li class="empty-state">No hay usuarios aún</li>
+                </ul>
+            </section>
+
+            <!-- Sección de Eventos/Gastos -->
+            <section class="card" id="events-section">
+                <div class="card-header">
+                    <h2>Gastos & Eventos</h2>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="event-title" placeholder="Título (ej: Cena Test)">
+                    <input type="number" id="event-amount" placeholder="Monto Total">
+                    <select id="event-admin">
+                        <option value="">Selecciona quién pagó...</option>
+                    </select>
+                    <button id="btn-create-event" class="btn primary">Crear Gasto</button>
+                    <!-- Update Gasto Inline -->
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
+                        <select id="update-event-select" style="width:100%;">
+                            <option value="">Gasto a actualizar...</option>
+                        </select>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" id="update-event-amount" placeholder="Nuevo monto" style="flex:1;">
+                            <button id="btn-update-event" class="btn primary" style="flex:1; padding: 0.75rem 0.5rem; font-size: 0.9rem;">Actualizar Gasto</button>
+                        </div>
+                    </div>
+                </div>
+                <ul class="list" id="events-list">
+                    <li class="empty-state">No hay gastos aún</li>
+                </ul>
+            </section>
+
+            <!-- Sección de Agregar Participantes -->
+            <section class="card" id="participants-section">
+                <div class="card-header">
+                    <h2>Repartir Cargos</h2>
+                </div>
+                <div class="form-group">
+                    <select id="participant-event">
+                        <option value="">Selecciona el gasto...</option>
+                    </select>
+                    <select id="participant-user">
+                        <option value="">Selecciona participante...</option>
+                    </select>
+                    <input type="number" id="participant-assigned-amount" placeholder="Monto fijo (Opcional)">
+                    <button id="btn-add-participant" class="btn secondary">Asignar Cargo</button>
+                </div>
+            </section>
+
+            <!-- Sección de Balances -->
+            <section class="card" id="balances-section">
+                <div class="card-header">
+                    <h2>Balances Finales</h2>
+                    <button id="btn-refresh-balances" class="btn flat">↻ Actualizar</button>
+                </div>
+                <ul class="list" id="balances-list">
+                    <li class="empty-state">Calculando deudas...</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <!-- Snackbar para alertas UI -->
+    <div id="snackbar">Proceso completado...</div>
+
+    <script src="app.js"></script>
+</body>
+</html>
