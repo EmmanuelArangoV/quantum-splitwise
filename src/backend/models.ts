@@ -107,8 +107,30 @@ export namespace BackendModels {
       if (newAmount <= 0) {
         throw new Error('El monto debe ser mayor a 0')
       }
+      
+      const diff = newAmount - this.amount
       this.amount = newAmount
-      this.recalculateDebts()
+
+      if (diff > 0) {
+        const adminDebt = this.debts.find(d => d.userId === this.adminId)
+        if (adminDebt) {
+          adminDebt.amount += diff
+        } else {
+          this.debts.push({ userId: this.adminId, amount: diff })
+        }
+      } else if (diff < 0) {
+        const discountAmount = Math.abs(diff)
+        const numParticipants = this.debts.length
+        if (numParticipants > 0) {
+          const discountPerPerson = discountAmount / numParticipants
+          this.debts.forEach(d => {
+            d.amount -= discountPerPerson
+            if (d.amount < 0) {
+              d.amount = 0
+            }
+          })
+        }
+      }
     }
 
     public transferDebt(fromUserId: string, toUserId: string): void {
